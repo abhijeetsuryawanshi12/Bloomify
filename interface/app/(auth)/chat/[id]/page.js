@@ -18,13 +18,15 @@ import axios from "axios";
 
 const Chat = () => {
   const router = useRouter();
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   // Redirect unauthenticated users
   useEffect(() => {
-    if (status === "unauthenticated") {
+    if (status === "authenticated" && !session.user.university) {
+      router.push("/details");
+    } else if (status === "unauthenticated") {
       router.push("/unauthenticated");
     }
-  }, [status, router]); // Ensure this effect runs when the status changes
+  }, [session, status, router]); // Ensure this effect runs when the status changes
 
   const { id: chatId } = useParams();
   const [userDetails, setUserDetails] = useState({
@@ -85,6 +87,10 @@ const Chat = () => {
           throw new Error(
             `Failed to fetch user details: ${response.statusText}`
           );
+        }
+
+        if (status === "loading" || (status === "authenticated" && !session.user.university)) {
+          return <div>Loading...</div>;
         }
 
         const details = await response.json();
@@ -566,3 +572,4 @@ const Chat = () => {
 };
 
 export default Chat;
+

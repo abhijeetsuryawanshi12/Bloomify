@@ -190,7 +190,7 @@ const Login = () => {
                 {/* Separator text */}
                 <button
                   className="w-1/2 bg-transparent rounded-xl border-2 border-black text-black py-2 flex flex-row justify-center items-center" // Styling for Google login button
-                  onClick={() => signIn("google")} // Sign in with Google on click
+                  onClick={() => signIn("google", { callbackUrl: "/dashboard" })} // Sign in with Google on click
                 >
                   <Image
                     src="/googlelogo.webp" // Google logo source
@@ -239,3 +239,4 @@ const Login = () => {
 };
 
 export default Login; // Export the login component
+

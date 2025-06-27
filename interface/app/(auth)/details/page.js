@@ -4,34 +4,27 @@ import { useState, useEffect } from "react"; // Importing React hooks
 import { useRouter, useSearchParams } from "next/navigation"; // Next.js navigation utilities
 import Image from "next/image"; // Next.js optimized image component
 import { getCookie } from "cookies-next"; // Function to get a cookie
-import { useSession } from "next-auth/react"; // For handling user session
+import { useSession } from "next-auth/react"; // For handling user session_
 
 const Details = () => {
   const [error, setError] = useState(""); // State to handle error messages
   const router = useRouter(); // Router instance for navigation
   const searchParams = useSearchParams(); // To access search parameters from the URL
-  const { status } = useSession(); // Get the authentication status
-  const [isAuthorized, setIsAuthorized] = useState(false); // State to track user authorization
-
-  // If the user is authenticated, redirect to the dashboard
-  if (status === "authenticated") {
-    router.push("/dashboard");
-  }
+  const { data: session, status, update } = useSession(); // Get the authentication status
 
   useEffect(() => {
-    // Check the cookie to determine if the "signup-flow" is set to `true`
-    const signupFlowCookie = getCookie("signup-flow"); // Retrieve the "signup-flow" cookie
-    if (signupFlowCookie === "true") {
-      setIsAuthorized(true); // If the cookie is true, the user is authorized
-    } else {
-      router.push("/signup"); // Redirect to the signup page if not authorized
+    if (status === "authenticated") {
+      if (session.user.university) {
+        router.push("/dashboard");
+      }
+    } else if (status === "unauthenticated") {
+      // This part is for the email/password flow which is unauthenticated at this stage
+      const signupFlowCookie = getCookie("signup-flow");
+      if (signupFlowCookie !== "true") {
+        router.push("/login");
+      }
     }
-  }, [router]); // Dependency array ensures this effect runs once on component mount
-
-  // If the user is not authorized, don't render the component
-  if (!isAuthorized) {
-    return null; // Return null to prevent unauthorized users from seeing the component
-  }
+  }, [session, status, router]);
 
   // Handle form submission for submitting user details
   const handleSubmit = async (e) => {
@@ -40,7 +33,12 @@ const Details = () => {
     // Extracting form values
     const username = e.target[0].value; // Get the username from the first form element
     const university = e.target[1].value; // Get the university from the second form element
-    const userEmail = searchParams.get("userEmail"); // Get userEmail from URL search params
+    // For authenticated users (Google flow), get email from session.
+    // For unauthenticated email/pass flow, get it from URL params.
+    const userEmail =
+      status === "authenticated"
+        ? session.user.email
+        : searchParams.get("userEmail");
 
     try {
       // Make a POST request to submit the user details
@@ -50,35 +48,45 @@ const Details = () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          username,
-          university,
-          userEmail,
+          username, university, userEmail
         }),
       });
 
       if (res.status === 400) {
         setError("This username already exists"); // Display error if the username is taken
       } else if (res.status === 200) {
-        setError(""); // Clear the error message
-        const response = await fetch("/api/set-cookie", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: "signup-flow",
-            value: "false",
-          }),
-        });
+        setError("");
 
-        if (response.ok) {
-          router.push("/login"); // Redirect to the login page upon success
+        if (status === "authenticated") {
+          // For Google users, update session and go to dashboard
+          await update({ user: { ...session.user, username, university } });
+          router.push("/dashboard");
+        } else {
+          // For email/password users, invalidate cookie and go to login
+          const response = await fetch("/api/set-cookie", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              name: "signup-flow",
+              value: "false",
+            }),
+          });
+
+          if (response.ok) {
+            router.push("/login"); // Redirect to the login page upon success
+          }
         }
       }
     } catch (error) {
       setError("Error, try again"); // Display error on fetch failure
     }
   };
+
+  if (status === "loading" || (status === "authenticated" && session?.user?.university)) {
+    return <div>Loading...</div>; // Or a spinner
+  }
 
   return (
     <>
@@ -165,3 +173,4 @@ const Details = () => {
 };
 
 export default Details; // Export the component for use elsewhereconsol
+

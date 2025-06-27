@@ -1,7 +1,9 @@
 import User from "@models/User"; // Import the User model
 import connect from "@utils/db"; // Database connection utility
 import { NextResponse } from "next/server"; // Import Next.js server response handling
-import {google} from "googleapis"; // Import Google APIs
+import { getServerSession } from "next-auth";
+import { authOptions } from "../auth/[...nextauth]/route";
+import { google } from "googleapis"; // Import Google APIs
 
 // Initialize JWT client
 const client = new google.auth.JWT(
@@ -15,15 +17,27 @@ const sheets = google.sheets({ version: "v4", auth: client });
 const spreadsheetId = process.env.GOOGLE_FEEDBACK_SHEET_ID;
 
 export const POST = async (request) => {
-	try {
-		// Parse the request body to extract the necessary fields
-		const { username, university, userEmail } = await request.json();
+	const session = await getServerSession(authOptions);
+	const body = await request.json();
+	const { username, university } = body;
+	let userEmail;
 
+	if (session) {
+		userEmail = session.user.email;
+	} else {
+		// Fallback for non-session flow (e.g., initial email/password signup)
+		userEmail = body.userEmail;
+		if (!userEmail) {
+			return new NextResponse("Unauthorized or missing userEmail", { status: 401 });
+		}
+	}
+
+	try {
 		// Connect to the database
 		await connect();
 
 		// Check if the provided username is already taken
-		const existingUsername = await User.findOne({ username });
+		const existingUsername = await User.findOne({ username, email: { $ne: userEmail } });
 
 		if (existingUsername) {
 			return new NextResponse("This username is already taken", {
@@ -43,8 +57,8 @@ export const POST = async (request) => {
 			range: "Sheet1", // Adjust the sheet name and range if necessary
 		});
 
-		const rows = response.data.values;
-		const emailExists = rows.some((row) => row[0] === userEmail);
+		const rows = response.data.values || [];
+		const emailExists = rows && rows.some((row) => row[0] === userEmail);
 
 		if (!emailExists) {
 			// Append new data to Google Sheets if email does not exist
@@ -69,3 +83,4 @@ export const POST = async (request) => {
 		}); // Return 500 if an internal server error occurs
 	}
 };
+

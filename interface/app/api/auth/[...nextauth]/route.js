@@ -51,7 +51,7 @@ export const authOptions = {
   callbacks: {
     async signIn({ user, account }) {
       // Check if the sign-in provider is Google
-      if (account.provider === 'google') {
+      if (account.provider === "google") {
         await connect(); // Connect to the database
         try {
           // Check if the user already exists in the database
@@ -65,18 +65,34 @@ export const authOptions = {
               googleUser: true, // Indicate that the user signed up with Google
             });
 
-            await newUser.save(); // Save the new user to the database  
-
-            // If the user is new, redirect to the /details page
-            return `/details?userEmail=${user.email}`;
+            await newUser.save(); // Save the new user to the database
           }
-
-          return true; // If the user exists, no need to set the cookie
         } catch (err) {
+          console.error("Error in signIn callback:", err);
           return false; // Return false to indicate a failure
         }
       }
-      return true
+      return true;
+    },
+    async jwt({ token, user }) {
+      if (user) {
+        // This is a new sign-in
+        await connect();
+        const dbUser = await User.findOne({ email: user.email });
+        if (dbUser) {
+          token.id = dbUser._id.toString();
+          token.username = dbUser.username;
+          token.university = dbUser.university;
+          token.googleUser = dbUser.googleUser;
+        }
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (token) {
+        session.user = { ...session.user, ...token };
+      }
+      return session;
     },
   },
 };
@@ -86,3 +102,4 @@ export const handler = NextAuth(authOptions);
 
 // Export the handler for GET and POST methods
 export { handler as GET, handler as POST };
+

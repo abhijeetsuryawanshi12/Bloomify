@@ -10,18 +10,21 @@ import ErrorDisplay from "@components/ErrorDisplay";
 import { IconInfoCircle } from "@tabler/icons-react";
 import FeedbackForm from "@components/FeedbackForm";
 import ChatButton from "@components/showOptions";
-import { Tooltip } from 'react-tooltip'
+import { Tooltip } from 'react-tooltip';
+import axios from "axios";
 
 const Dashboard = () => {
   const router = useRouter();
-  const { status } = useSession();
+  const { data: session, status } = useSession();
 
   // Redirect unauthenticated users
   useEffect(() => {
-    if (status === "unauthenticated") {
+    if (status === "authenticated" && !session.user.university) {
+      router.push("/details");
+    } else if (status === "unauthenticated") {
       router.push("/unauthenticated");
     }
-  }, [status, router]); // Ensure this effect runs when the status changes
+  }, [status, session, router]); // Ensure this effect runs when the status changes
 
   const [userDetails, setUserDetails] = useState({
     username: "",
@@ -96,6 +99,10 @@ const Dashboard = () => {
 
     fetchFilteredChats(); // Fetch initial filtered chats
   }, [searchQuery]);
+
+  if (status === "loading" || (status === "authenticated" && !session.user.university)) {
+    return <div>Loading...</div>;
+  }
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
@@ -462,3 +469,4 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+

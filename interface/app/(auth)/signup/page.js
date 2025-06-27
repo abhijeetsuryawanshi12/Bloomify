@@ -189,8 +189,8 @@ const Signup = () => {
 							</div>{" "}
 							{/* Separator */}
 							<button
-								className="text-xl w-full bg-transparent text-black py-2 rounded-xl border-2 border-black flex flex-row justify-center items-center" // Styling
-								onClick={handleSignUpWithGoogle} // Google sign-in handler
+								className="text-xl w-full bg-transparent text-black py-2 rounded-xl border-2 border-black flex flex-row justify-center items-center"
+								onClick={() => signIn("google", { callbackUrl: "/dashboard" })} // Google sign-in handler
 							>
 								<Image
 									src="/googlelogo.webp"
@@ -250,3 +250,4 @@ const Signup = () => {
 };
 
 export default Signup; // Export the Signup component
+

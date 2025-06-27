@@ -37,5 +37,6 @@ next-env.d.ts
 
 .env*
 .flaskenv*
+!.env.example
 !.env.project
 !.env.vault

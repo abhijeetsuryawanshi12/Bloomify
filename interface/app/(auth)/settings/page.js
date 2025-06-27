@@ -3,12 +3,16 @@
 import { useState, useEffect } from "react"; // React hooks for state management and side effects
 import Link from "next/link"; // Link component for client-side navigation
 import Image from "next/image"; // Next.js optimized image component
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import SignoutButton from "@components/SignoutButton"; // Component for signing out
 import ErrorDisplay from "@components/ErrorDisplay"; // Component to display error messages
 import { IconInfoCircle } from "@tabler/icons-react";
 import FeedbackForm from "@components/FeedbackForm";
 
 const Settings = () => {
+  const router = useRouter();
+  const { data: session, status } = useSession();
   // State for various form inputs and error handling
   const [currentPassword, setCurrentPassword] = useState(""); // State for the current password input
   const [newPassword, setNewPassword] = useState(""); // State for the new password input
@@ -21,6 +25,14 @@ const Settings = () => {
   });
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+
+  useEffect(() => {
+    if (status === "authenticated" && !session.user.university) {
+      router.push("/details");
+    } else if (status === "unauthenticated") {
+      router.push("/unauthenticated");
+    }
+  }, [session, status, router]);
 
   // Fetch user details when the component mounts
   useEffect(() => {
@@ -159,6 +171,10 @@ const Settings = () => {
   const handleError = () => {
     setError(null); // Clear the error message
   };
+
+  if (status === "loading" || (status === "authenticated" && !session?.user?.university)) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <>
@@ -435,3 +451,4 @@ const Settings = () => {
 };
 
 export default Settings; // Export the Settings component
+
